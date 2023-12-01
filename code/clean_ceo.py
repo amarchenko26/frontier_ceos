@@ -30,8 +30,10 @@ os.chdir(base_directory)
 
 ######## Load data ############################################################
 
+# CAN I FIGURE OUT A WAY HERE TO DOWNLOAD DIRECTLY FROM THE GDRIVE TO SAVE THIS STEP?
+
 # Load the Excel file
-file_path = 'data/entrepreneurs.xlsx'
+file_path = 'data/entrepreneurs_master.xlsx'
 all_sheets = pd.read_excel(file_path, sheet_name=None)
 
 # Access a specific sheet from the dictionary
@@ -46,7 +48,7 @@ state_pop_1950 = all_sheets['state_pop_1950']
 ##################################### Histogram of birthplaces 
 
 # Checking unique values and their frequencies in the 'Birthplace' column
-birthplace_counts = ceo_df['Birthplace'].value_counts()
+birthplace_counts = ceo_df['Birthstate'].value_counts()
 
 # Creating the histogram for the birthplaces
 plt.figure(figsize=(15, 8))
@@ -75,13 +77,13 @@ del state_pop_1950
 state_pop.set_index('state', inplace=True)
 
 # First, map the population data to the birthplaces
-ceo_df['State Population 1900'] = ceo_df['Birthplace'].map(state_pop['1900_census_pop'])
+ceo_df['State Population 1900'] = ceo_df['Birthstate'].map(state_pop['1900_census_pop'])
 
 # Calculate number of leaders divided by state population
 ceo_df['Scaled Leaders'] = 1 / ceo_df['State Population 1900']
 
 # Summing the scaled values for each state to get the final values for the histogram
-scaled_birthplace_counts = ceo_df.groupby('Birthplace')['Scaled Leaders'].sum()
+scaled_birthplace_counts = ceo_df.groupby('Birthstate')['Scaled Leaders'].sum()
 
 # Sort the values for better visualization
 scaled_birthplace_counts = scaled_birthplace_counts.sort_values(ascending=False)

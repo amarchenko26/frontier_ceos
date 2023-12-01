@@ -72,7 +72,6 @@ driver = webdriver.Chrome(options=options)
 
 
 print("Starting scraping process...")
-# Replace 'your_file.csv' with the path to your CSV file
 read_and_scrape('/Users/anyamarchenko/Desktop/entrepreneur_test.csv', driver)
 
 print("Scraping process completed.")
