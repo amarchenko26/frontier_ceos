@@ -27,17 +27,16 @@ base_directory = "/Users/anyamarchenko/Documents/Github/frontier_ceos"
 os.chdir(base_directory)
 
 
-
 ######## Load data ############################################################
 
-# CAN I FIGURE OUT A WAY HERE TO DOWNLOAD DIRECTLY FROM THE GDRIVE TO SAVE THIS STEP?
+# Read in clean ceo_df
+ceo_df = pd.read_csv("data/clean_data/entrepreneurs_clean.csv")
 
-# Load the Excel file
-file_path = 'data/entrepreneurs_master.xlsx'
+# Read in codes & state pop data
+file_path = 'data/raw_data/entrepreneurs_master.xlsx'
 all_sheets = pd.read_excel(file_path, sheet_name=None)
 
 # Access a specific sheet from the dictionary
-ceo_df = all_sheets['master']
 ceo_codes = all_sheets['codes']
 state_pop_1850 = all_sheets['state_pop_1850']
 state_pop_1900 = all_sheets['state_pop_1900']
@@ -54,7 +53,7 @@ birthplace_counts = ceo_df['Birthstate'].value_counts()
 plt.figure(figsize=(15, 8))
 birthplace_counts.plot(kind='bar')
 plt.title('Histogram of CEO\'s Birthplaces')
-plt.xlabel('Birthplace (State or Country)')
+plt.xlabel('Birthplace (State)')
 plt.ylabel('Number of Leaders')
 plt.xticks(rotation=90)  # Rotate labels to make them readable
 
