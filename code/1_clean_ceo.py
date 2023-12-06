@@ -10,7 +10,9 @@ import pandas as pd
 import numpy as np
 import addfips
 import os
-
+import census
+from census import Census
+from us import states
 
 # Set the base directory
 base_directory = "/Users/anyamarchenko/Documents/Github/frontier_ceos"
@@ -99,12 +101,12 @@ result_df['num_ceos'].fillna(0, inplace=True)
 
 
 
-
 ###############################################################################
 ######## Save clean .csv ######################################################
 
 ceo_df.to_csv("data/clean_data/entrepreneurs_clean.csv")
 
+result_df.to_csv("data/clean_data/county_ceo.csv")
 
 
 
