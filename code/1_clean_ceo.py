@@ -10,15 +10,13 @@ import pandas as pd
 import numpy as np
 import addfips
 import os
-import census
-from census import Census
 from us import states
 
 # Set the base directory
 base_directory = "/Users/anyamarchenko/Documents/Github/frontier_ceos"
 os.chdir(base_directory)
-
-######## Load data ############################################################
+    
+######## Load raw data ########################################################
 
 # Load the Excel file
 file_path = 'data/raw_data/entrepreneurs_master.xlsx'
@@ -34,7 +32,6 @@ countries_to_filter = ["Australia", "Austria", "Belgium", "Canada", "China", "Cu
 
 # Filtering the DataFrame
 ceo_df = ceo_df[~ceo_df['Birthstate'].isin(countries_to_filter)]
-
 
 
 ######## Merge in FIPS codes ##################################################
@@ -70,6 +67,7 @@ ceo_df['FIPS'] = ceo_df['FIPS'].astype(str)
 
 ceo_df = pd.merge(ceo_df, tfe[['FIPS', 'tfe']], how = 'left', on ='FIPS')
 
+
 ######## Assign average TFE in birth state to missing values
 
 # Create a dictionary mapping state names to their average TFE
@@ -87,16 +85,17 @@ def calculate_tfe_imp(row):
 ceo_df['tfe_imp'] = ceo_df.apply(calculate_tfe_imp, axis=1)
 
 
+
 ######## Merge in num_ceos to TFE #############################################
 
 # Group and count CEOs by FIPS in ceo_df
 ceo_count = ceo_df.groupby('FIPS').size().reset_index(name='num_ceos')
 
 # Merge tfe_df and ceo_count to create the final dataframe
-result_df = tfe.merge(ceo_count, on='FIPS', how='left')
+county_ceo = tfe.merge(ceo_count, on='FIPS', how='left')
 
 # Fill missing values in num_ceos with 0
-result_df['num_ceos'].fillna(0, inplace=True)
+county_ceo['num_ceos'].fillna(0, inplace=True)
 
 
 
@@ -106,7 +105,7 @@ result_df['num_ceos'].fillna(0, inplace=True)
 
 ceo_df.to_csv("data/clean_data/entrepreneurs_clean.csv")
 
-result_df.to_csv("data/clean_data/county_ceo.csv")
+county_ceo.to_csv("data/clean_data/county_ceo.csv")
 
 
 
