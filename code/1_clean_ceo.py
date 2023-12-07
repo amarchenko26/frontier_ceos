@@ -53,7 +53,7 @@ def assign_fips(row):
 ceo_df['FIPS'] = ceo_df.apply(assign_fips, axis=1)
 
 
-######## Merge in TFE to ceo_df ###############################################
+######## Clean TFE df ###############################################
 
 # Read in TFE .dta from Bazzi et al. ECMA (2020) 
 tfe = pd.read_stata("data/raw_data/proptaxvote.dta")
@@ -65,6 +65,10 @@ tfe.rename(columns={'fips': 'FIPS', 'tye_tfe890_500kNI_100_l6': 'tfe'}, inplace=
 tfe['FIPS'] = tfe['FIPS'].astype(str)
 ceo_df['FIPS'] = ceo_df['FIPS'].astype(str)
 
+# Add leading zero to standardize all FIPS
+tfe['FIPS'] = tfe['FIPS'].apply(lambda x: '0' + x if len(x) == 4 else x)
+
+# Merge TFE into CEO df - this works well!
 ceo_df = pd.merge(ceo_df, tfe[['FIPS', 'tfe']], how = 'left', on ='FIPS')
 
 
@@ -85,25 +89,44 @@ def calculate_tfe_imp(row):
 ceo_df['tfe_imp'] = ceo_df.apply(calculate_tfe_imp, axis=1)
 
 
+###############################################################################
+# Save clean .csv 
+###############################################################################
 
-######## Merge in num_ceos to TFE #############################################
+ceo_df.to_csv("data/clean_data/entrepreneurs_clean.csv")
 
-# Group and count CEOs by FIPS in ceo_df
-ceo_count = ceo_df.groupby('FIPS').size().reset_index(name='num_ceos')
 
-# Merge tfe_df and ceo_count to create the final dataframe
-county_ceo = tfe.merge(ceo_count, on='FIPS', how='left')
-
-# Fill missing values in num_ceos with 0
-county_ceo['num_ceos'].fillna(0, inplace=True)
 
 
 
 
 ###############################################################################
-######## Save clean .csv ######################################################
+# Merge num_ceos into tfe df
+###############################################################################
 
-ceo_df.to_csv("data/clean_data/entrepreneurs_clean.csv")
+# Group and count CEOs by FIPS in ceo_df
+ceo_count = ceo_df.groupby('FIPS').size().reset_index(name = 'num_ceos')
+
+# Merge tfe_df and ceo_count to create the final dataframe
+county_ceo = tfe.merge(ceo_count, on = 'FIPS', how = 'left')
+
+# Fill missing values in num_ceos with 0
+county_ceo['num_ceos'].fillna(0, inplace = True)
+
+# Merge in census-level pop 
+# https://www.nber.org/research/data/census-us-decennial-county-population-data-1900-1990
+county_pop_df = pd.read_stata("data/raw_data/cencounts.dta")
+county_pop_df.rename(columns={'fips': 'FIPS'}, inplace=True)
+
+county_ceo = pd.merge(county_ceo, county_pop_df, how = 'left', on ='FIPS')
+
+# Gen normalized CEOs
+county_ceo['ceos_norm'] = county_ceo['num_ceos'] / county_ceo['pop1950'] * 10000
+
+
+###############################################################################
+# Save clean .csv 
+###############################################################################
 
 county_ceo.to_csv("data/clean_data/county_ceo.csv")
 

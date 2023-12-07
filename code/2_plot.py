@@ -9,26 +9,21 @@ Created on Tue Nov 21 10:15:02 2023
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-import subprocess # for sleep
 import geopandas as gpd
 
-######## Paths & sleep functions #############################################
 
-def prevent_sleep():
-    return subprocess.Popen(['caffeinate'])
-
-def allow_sleep(process):
-    process.terminate()
-
-# Uncomment to prevent comp from sleeping
-process = prevent_sleep()
+###############################################################################
+# Path
+###############################################################################
 
 # Set the base directory
 base_directory = "/Users/anyamarchenko/Documents/Github/frontier_ceos"
 os.chdir(base_directory)
 
 
-######## Load data ############################################################
+###############################################################################
+# Load data
+###############################################################################
 
 # Read in clean ceo_df
 ceo_df = pd.read_csv("data/clean_data/entrepreneurs_clean.csv")
@@ -44,65 +39,116 @@ state_pop_1900 = all_sheets['state_pop_1900']
 state_pop_1950 = all_sheets['state_pop_1950']
 
 
+###############################################################################
+# FUNCTIONS
+###############################################################################
 
-########## Histogram of birthplaces ###########################################
+# Constants
+BIRTHSTATE_COL = 'Birthstate'
+STATE_POP_1950_COL = 'State Population 1950'
+SCALED_LEADERS_COL = 'Scaled Leaders'
+CEO_COUNT_COL = 'CEO_count'
+CEO_COUNT_SCALED_COL = 'CEO_count_scaled'
+FIGURE_PATH = 'output/figures/'
 
-# Checking unique values and their frequencies in the 'Birthplace' column
-state_ceo_counts = ceo_df['Birthstate'].value_counts()
-
-# Creating the histogram for the birthplaces
-plt.figure(figsize=(15, 8))
-state_ceo_counts.plot(kind='bar')
-plt.title('Histogram of CEO\'s Birthplaces')
-plt.xlabel('Birthplace (State)')
-plt.ylabel('Number of Leaders')
-plt.xticks(rotation=90)  # Rotate labels to make them readable
-
-plt.style.use('bmh')
-plt.tight_layout()
-
-plt.savefig('output/figures/state_hist.png', format='png')
+def merge_state_populations(*pop_dfs):
+    state_pop = pd.DataFrame()
+    for df in pop_dfs:
+        if state_pop.empty:
+            state_pop = df
+        else:
+            state_pop = pd.merge(state_pop, df, how='left', on='state')
+    return state_pop
 
 
-########### Histogram of birthplaces by pop ###################################
+def scale_ceo_counts_by_population(ceo_df, population_df, population_column):
+    """
+    Scales CEO counts by state population.
 
-state_pop = pd.merge(state_pop_1900, state_pop_1950, how = 'left', on ='state')
-state_pop = pd.merge(state_pop, state_pop_1850, how = 'left', on ='state')
+    :param ceo_df: DataFrame containing CEO data.
+    :param population_df: DataFrame containing population data.
+    :param population_column: Column name in population_df to be used for scaling.
+    :return: A Series with scaled CEO counts by state.
+    """
+    # Map the population data to the birthplaces
+    ceo_df['State Population'] = ceo_df[BIRTHSTATE_COL].map(population_df[population_column])
 
-del state_pop_1850 
-del state_pop_1900 
-del state_pop_1950
+    # Calculate number of leaders divided by state population
+    ceo_df[SCALED_LEADERS_COL] = 1 / ceo_df['State Population']
 
-# Setting the 'State' column as the index for easy lookup
+    # Summing the scaled values for each state
+    scaled_state_ceo_counts = ceo_df.groupby('Birthstate')['Scaled Leaders'].sum()
+
+    # Sort the values for better visualization
+    scaled_state_ceo_counts = scaled_state_ceo_counts.sort_values(ascending=False)
+
+    return scaled_state_ceo_counts
+
+
+def plot_histogram(data, title, xlabel, ylabel, filename):
+    plt.figure(figsize=(15, 8))
+    data.plot(kind='bar')
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.xticks(rotation=90)
+    plt.style.use('bmh')
+    plt.tight_layout()
+    plt.savefig(f'{FIGURE_PATH}{filename}', format='png')
+    plt.show()
+
+
+def prepare_map_data(counts, map_template, count_column_name):
+    """
+    Prepares map data by merging counts with the map template.
+
+    :param counts: Series containing counts to be mapped.
+    :param map_template: GeoDataFrame of the map template (e.g., continental_usa).
+    :param count_column_name: Column name to assign to the counts.
+    :return: GeoDataFrame ready for plotting.
+    """
+    # Initialize all states with default count 0
+    all_states = pd.Series(0, index=map_template['name'])
+
+    # Update with actual counts
+    updated_counts = all_states.add(counts, fill_value=0)
+
+    # Merge the counts with the map template
+    return map_template.set_index('name').join(updated_counts.rename(count_column_name))
+
+
+def plot_map(map_data, column, title, filename):
+    fig, ax = plt.subplots(1, 1, figsize=(15, 10))
+    map_data.plot(column=column, ax=ax, legend=True, legend_kwds={'orientation': "horizontal"})
+    plt.title(title, fontsize=14, pad=20)
+    plt.savefig(f'{FIGURE_PATH}{filename}', format='png')
+    plt.show()
+
+
+# Create df with state pop
+state_pop = merge_state_populations(state_pop_1850, state_pop_1900, state_pop_1950)
 state_pop.set_index('state', inplace=True)
 
-# First, map the population data to the birthplaces
-ceo_df['State Population 1950'] = ceo_df['Birthstate'].map(state_pop['1950_census_pop'])
+# Create CEO counts from 'Birthplace' column
+state_ceo_counts = ceo_df[BIRTHSTATE_COL].value_counts()
 
-# Calculate number of leaders divided by state population
-ceo_df['Scaled Leaders'] = 1 / ceo_df['State Population 1950']
-
-# Summing the scaled values for each state to get the final values for the histogram
-scaled_state_ceo_counts = ceo_df.groupby('Birthstate')['Scaled Leaders'].sum()
-
-# Sort the values for better visualization
-scaled_state_ceo_counts = scaled_state_ceo_counts.sort_values(ascending=False)
-
-# Create the rescaled histogram for the birthplaces
-plt.figure(figsize=(15, 8))
-scaled_state_ceo_counts.plot(kind='bar')
-plt.title('Histogram of CEOs\' Birthstates (Normalized by 1950 State Population)')
-plt.xlabel('Birthplace (State)')
-plt.ylabel('Scaled Number of CEOs by State Population')
-plt.xticks(rotation=90)  # Rotate labels to make them readable
-
-plt.style.use('bmh')
-plt.tight_layout()
-
-plt.savefig('output/figures/state_hist_rescaled.png', format='png')
+# Create scaled CEO counts
+scaled_counts_1950 = scale_ceo_counts_by_population(ceo_df, state_pop, '1950_census_pop')
 
 
-############################### Map of Counts #################################
+
+###############################################################################
+# Histograms
+###############################################################################
+
+# Plot histogram of counts
+plot_histogram(data = state_ceo_counts, title="Histogram of CEO's Birthplaces", xlabel='Birthplace (State)', ylabel='Number of Leaders', filename='state_hist.png')
+plot_histogram(data = scaled_counts_1950, title="Histogram of CEO's Birthplaces (Normalized by 1950 State Pop", xlabel='Birthplace (State)', ylabel='Number of Leaders', filename='state_hist_rescaled.png')
+
+
+###############################################################################
+# Maps
+###############################################################################
 
 # Load U.S. states map
 url = "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json"
@@ -111,52 +157,18 @@ usa = gpd.read_file(url)
 # Filter out Alaska and Hawaii
 continental_usa = usa[~usa['name'].isin(['Alaska', 'Hawaii', 'Puerto Rico'])]
 
-# Create a DataFrame for all continental states with default count 0
-all_states = pd.Series(0, index=continental_usa['name'])
 
-# Update this with the actual counts
-state_ceo_counts = all_states.add(state_ceo_counts, fill_value=0)
+# Prepare Map 1
+map_data = prepare_map_data(state_ceo_counts, continental_usa, CEO_COUNT_COL)
 
-# Merge the data with the map
-map_data = continental_usa.set_index('name').join(state_ceo_counts.rename('CEO_count'))
-
-# Plot the map
-fig, ax = plt.subplots(1, 1, figsize=(15, 10))
-map_data.plot(column='CEO_count', ax=ax, legend=True,
-              legend_kwds={'orientation': "horizontal"})
-
-plt.title("Number of CEOs Born per State", fontsize=14, pad=20)
-plt.savefig('output/figures/map_ceos.png', format='png')
+# Map 1
+plot_map(map_data = map_data, column = CEO_COUNT_COL, title="Number of CEOs Born per State", filename='map_ceos.png')
 
 
-##### Map 2
+# Prepare Map 2
+map_data_scaled = prepare_map_data(scaled_counts_1950, continental_usa, CEO_COUNT_SCALED_COL)
 
-scaled_state_ceo_counts = all_states.add(scaled_state_ceo_counts, fill_value=0)
-
-# Merge the data with the map
-map_data = continental_usa.set_index('name').join(scaled_state_ceo_counts.rename('CEO_count_scaled'))
-
-# Plot the map
-fig, ax = plt.subplots(1, 1, figsize=(15, 10))
-map_data.plot(column='CEO_count_scaled', ax=ax, legend=True,
-              legend_kwds={'orientation': "horizontal"})
-
-plt.title("Number of CEOs Born per State (Normalized by 1950 State Population)", fontsize=14, pad=20)
-plt.savefig('output/figures/map_ceos_norm.png', format='png')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Map 2
+plot_map(map_data = map_data_scaled, column = CEO_COUNT_SCALED_COL, title="Number of CEOs Born per State (Normalized by 1950 State Population)", filename='map_ceos_norm.png')
 
 

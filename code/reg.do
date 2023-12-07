@@ -20,16 +20,6 @@ tostring fips, replace
 gen leadzero = "0"
 replace fips = leadzero + fips if statename == "Alabama" | statename == "Arkansas" | statename == "Arizona" | statename == "California" | statename == "Colorado" | statename == "Connecticut"
 
-* Merge in pop https://www.nber.org/research/data/census-us-decennial-county-population-data-1900-1990
-merge 1:m fips using "raw_data/cencounts.dta"
-
-* Gen normalized CEOs
-gen ceos_norm = num_ceos / pop1950
-replace ceos_norm = ceos_norm * 10000
-la var ceos_norm "CEOs per county (normalized by 1950 county pop * 10000)"
-
-export "clean_data/county_ceo.csv", replace
-
 ********************************************************************************
 * Scatterplot of CEOs vs. TFE
 ********************************************************************************
@@ -48,19 +38,19 @@ restore
 * Regression
 ********************************************************************************
 
-reg num_ceos tfe pop1950, robust
+reg num_ceos tfe pop1950 i.statea, robust
 eststo a
 
-reg num_ceos tfe pop1950, robust cluster(fips)
+reg num_ceos tfe pop1950 i.statea, robust cluster(fips)
 eststo b
 
-poisson num_ceos tfe  pop1950 wsexrat1890 shslav1860, vce(robust) irr //reports estimated coefficients transformed to incidence-rate ratios
+poisson num_ceos tfe pop1950 wsexrat1890 shslav1860 i.statea, vce(robust) irr //reports estimated coefficients transformed to incidence-rate ratios
 eststo c
 
-nbreg num_ceos tfe pop1950, vce(robust)
+nbreg num_ceos tfe pop1950 i.statea, vce(robust)
 eststo d
 
-reg ceos_norm tfe pop1950, robust
+reg ceos_norm tfe pop1950 i.statea, robust
 eststo e
 
 estout a b c d e using "/Users/anyamarchenko/Documents/GitHub/frontier_ceos/output/tables/table1.tex", style(tex) replace label starlevels(* .1 ** .05 *** .01 ) cells("b(fmt(4)star)" "se(fmt(4)par)") ///
