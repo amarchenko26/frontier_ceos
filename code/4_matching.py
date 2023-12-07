@@ -8,10 +8,7 @@ Created on Wed Dec  6 22:12:42 2023
 
 import pandas as pd
 import os
-import matplotlib.pyplot as plt
 from sklearn.neighbors import NearestNeighbors
-import statsmodels.api as sm
-
 
 ###############################################################################
 # Path
@@ -35,7 +32,7 @@ county_ceo = pd.read_csv('data/clean_data/county_ceo.csv')
 
 # Initialize df to store matched counties' information
 matched_counties = pd.DataFrame(columns=['state', 'high_tfe_county', 'low_tfe_county', 'high_tfe_ceos', 'low_tfe_ceos'])
-matching_vars = ['pop1950', 'tfe', ]
+matching_vars = ['pop1950', 'tfe']
 
 # Drop rows with missings in the matching_vars
 county_ceo = county_ceo.dropna(axis = 0, subset = matching_vars)
@@ -64,9 +61,9 @@ for state in county_ceo['statea'].unique():
         nn = NearestNeighbors(n_neighbors = 1)
         print(f"Got NN for state {state}")
 
-        nn.fit(low_tfe['pop1950'])
+        nn.fit(low_tfe[matching_vars])
 
-        distances, indices = nn.kneighbors(high_tfe['pop1950'])
+        distances, indices = nn.kneighbors(high_tfe[matching_vars])
 
         # Store the matched counties' information
         for i, index in enumerate(indices.squeeze()):
@@ -77,6 +74,10 @@ for state in county_ceo['statea'].unique():
                 'state': [state],
                 'high_tfe_county': [high_tfe_row['name']],  # Assuming the county name is the index
                 'low_tfe_county': [low_tfe_row['name']],
+                'high_tfe_value': [high_tfe_row['tfe']],
+                'low_tfe_value': [low_tfe_row['tfe']],
+                'high_tfe_pop': [high_tfe_row['pop1950']],
+                'low_tfe_pop': [low_tfe_row['pop1950']],
                 'high_tfe_ceos': [high_tfe_row['num_ceos']],
                 'low_tfe_ceos': [low_tfe_row['num_ceos']]
             })
@@ -94,8 +95,11 @@ print(matched_counties)
 
 
 ###############################################################################
-# Take means of matched 
+# Take means of matched counties
 ###############################################################################
 
 ate_matched = matched_counties['high_tfe_ceos'].mean() - matched_counties['low_tfe_ceos'].mean()
 print(f"Difference between above median and below median TFE counties (by state) in their number of CEOs is {ate_matched}")
+
+
+
