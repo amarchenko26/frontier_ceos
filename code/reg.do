@@ -27,7 +27,7 @@ replace fips = leadzero + fips if statename == "Alabama" | statename == "Arkansa
 preserve
 drop if ceos_norm == 0 //Remove counties with no CEOs
 
-twoway scatter ceos_norm tfe || lfit ceos_norm tfe, title("Number CEOs vs TFE (excluding zeroes)") legend(position(6))
+twoway scatter ceos_norm tfe || lfit ceos_norm tfe, title("Number CEOs per 10,000 people versus TFE (excluding zeroes)") legend(position(6))
 
 graph export "/Users/anyamarchenko/Documents/GitHub/frontier_ceos/output/figures/scatter.png", as(png) replace
 
@@ -37,6 +37,17 @@ restore
 ********************************************************************************
 * Regression
 ********************************************************************************
+
+preserve 
+* keep only states that have TFE info for all counties
+keep if statename == "Minnesota" | statename == "Iowa" | statename == "Missouri" | statename == "Michigan" | statename == "Arkansas" | statename == "Louisiana" | statename == "Mississippi" | statename == "Alabama" | statename == "Florida" | statename == "Tennessee" | statename == "Kentucky" | statename == "Ohio" | statename == "Indiana" | statename == "Illinois" | statename == "Wisconsin"
+
+reg num_ceos tfe pop1950 i.statea, robust
+eststo f
+
+restore 
+
+
 
 reg num_ceos tfe pop1950 i.statea, robust
 eststo a
@@ -53,7 +64,7 @@ eststo d
 reg ceos_norm tfe pop1950 i.statea, robust
 eststo e
 
-estout a b c d e using "/Users/anyamarchenko/Documents/GitHub/frontier_ceos/output/tables/table1.tex", style(tex) replace label starlevels(* .1 ** .05 *** .01 ) cells("b(fmt(4)star)" "se(fmt(4)par)") ///
+estout a b c d e using "/Users/anyamarchenko/Documents/GitHub/frontier_ceos/output/tables/table1.tex", style(tex) replace label starlevels(* .1 ** .05 *** .01 ) keep(tfe pop1950) cells("b(fmt(4)star)" "se(fmt(4)par)") ///
 	eqlabels(none) collabels(none) mlabels("OLS" "OLS, county clustered" "Poisson" "Neg Binomial" "Normalized by pop") mgroups(none) ///
 	nobaselevels noomitted /// //this omits the baselevels of factor variables
 	stats(N r2,  /// 

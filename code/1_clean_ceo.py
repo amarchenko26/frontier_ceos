@@ -16,14 +16,21 @@ from us import states
 base_directory = "/Users/anyamarchenko/Documents/Github/frontier_ceos"
 os.chdir(base_directory)
     
-######## Load raw data ########################################################
+
+###############################################################################
+# Load raw data 
+###############################################################################
 
 # Load the Excel file
 file_path = 'data/raw_data/entrepreneurs_master.xlsx'
+
 ceo_df = pd.read_excel(file_path, sheet_name = 'master')
+industry_codes_df = pd.read_excel(file_path, sheet_name = 'industry_codes', header = None, names=['Industry Code', 'Industry'])
 
 
-######## Remove foreign countries ######################################
+###############################################################################
+# Remove foreign countries 
+###############################################################################
 
 # List of countries to filter out
 countries_to_filter = ["Australia", "Austria", "Belgium", "Canada", "China", "Cuba", "England", "France", "Germany",
@@ -34,7 +41,9 @@ countries_to_filter = ["Australia", "Austria", "Belgium", "Canada", "China", "Cu
 ceo_df = ceo_df[~ceo_df['Birthstate'].isin(countries_to_filter)]
 
 
-######## Merge in FIPS codes ##################################################
+###############################################################################
+# Merge in FIPS codes 
+###############################################################################
 
 # Create an instance of the addfips.AddFIPS class
 af = addfips.AddFIPS()
@@ -53,7 +62,9 @@ def assign_fips(row):
 ceo_df['FIPS'] = ceo_df.apply(assign_fips, axis=1)
 
 
-######## Clean TFE df ###############################################
+###############################################################################
+# Clean TFE df 
+###############################################################################
 
 # Read in TFE .dta from Bazzi et al. ECMA (2020) 
 tfe = pd.read_stata("data/raw_data/proptaxvote.dta")
@@ -72,7 +83,9 @@ tfe['FIPS'] = tfe['FIPS'].apply(lambda x: '0' + x if len(x) == 4 else x)
 ceo_df = pd.merge(ceo_df, tfe[['FIPS', 'tfe']], how = 'left', on ='FIPS')
 
 
-######## Assign average TFE in birth state to missing values
+###############################################################################
+# Assign average TFE in birth state to missing values
+###############################################################################
 
 # Create a dictionary mapping state names to their average TFE
 state_average_tfe = tfe.groupby('statename')['tfe'].mean().to_dict()
@@ -90,6 +103,15 @@ ceo_df['tfe_imp'] = ceo_df.apply(calculate_tfe_imp, axis=1)
 
 
 ###############################################################################
+# Merge in industry codes
+###############################################################################
+
+# rename for merge
+ceo_df.rename(columns={'Industry': 'Industry Code'}, inplace=True)
+ceo_df = ceo_df.merge(industry_codes_df, on = 'Industry Code', how = 'left')
+
+
+###############################################################################
 # Save clean .csv 
 ###############################################################################
 
@@ -97,8 +119,8 @@ ceo_df.to_csv("data/clean_data/entrepreneurs_clean.csv")
 
 
 
-
-
+###############################################################################
+# (2) Switch to county-level df
 
 ###############################################################################
 # Merge num_ceos into tfe df
@@ -106,6 +128,10 @@ ceo_df.to_csv("data/clean_data/entrepreneurs_clean.csv")
 
 # Group and count CEOs by FIPS in ceo_df
 ceo_count = ceo_df.groupby('FIPS').size().reset_index(name = 'num_ceos')
+
+
+#ceo_industries = ceo_df.groupby('FIPS').size().reset_index(name = 'num_ceos')
+
 
 # Merge tfe_df and ceo_count to create the final dataframe
 county_ceo = tfe.merge(ceo_count, on = 'FIPS', how = 'left')
@@ -122,6 +148,7 @@ county_ceo = pd.merge(county_ceo, county_pop_df, how = 'left', on ='FIPS')
 
 # Gen normalized CEOs
 county_ceo['ceos_norm'] = county_ceo['num_ceos'] / county_ceo['pop1950'] * 10000
+
 
 
 ###############################################################################

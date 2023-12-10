@@ -85,13 +85,22 @@ def scale_ceo_counts_by_population(ceo_df, population_df, population_column):
     return scaled_state_ceo_counts
 
 
-def plot_histogram(data, title, xlabel, ylabel, filename):
+def plot_histogram(data, title, xlabel, ylabel, filename, special_xticks=False):
     plt.figure(figsize=(15, 8))
     data.plot(kind='bar')
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.xticks(rotation=90)
+    
+    if special_xticks:
+        # Modify the xticks to not show every year
+        tick_spacing = 5
+        tick_positions = range(0, len(data), tick_spacing)
+        tick_labels = [data.index[i] if i < len(data) else '' for i in tick_positions]
+        plt.xticks(tick_positions, tick_labels, rotation=90)
+    else: 
+        plt.xticks(rotation=90)
+        
     plt.style.use('bmh')
     plt.tight_layout()
     plt.savefig(f'{FIGURE_PATH}{filename}', format='png')
@@ -119,7 +128,7 @@ def prepare_map_data(counts, map_template, count_column_name):
 
 def plot_map(map_data, column, title, filename):
     fig, ax = plt.subplots(1, 1, figsize=(15, 10))
-    map_data.plot(column=column, ax=ax, legend=True, legend_kwds={'orientation': "horizontal"})
+    map_data.plot(column=column, ax=ax, cmap = 'Blues', legend=True, legend_kwds={'orientation': "horizontal"})
     plt.title(title, fontsize=14, pad=20)
     plt.savefig(f'{FIGURE_PATH}{filename}', format='png')
     plt.show()
@@ -135,15 +144,24 @@ state_ceo_counts = ceo_df[BIRTHSTATE_COL].value_counts()
 # Create scaled CEO counts
 scaled_counts_1950 = scale_ceo_counts_by_population(ceo_df, state_pop, '1950_census_pop')
 
+# Create birth year counts
+birth_counts = ceo_df['Born'].value_counts().sort_values(ascending=True)
 
+# Create industry counts
+industry_counts = ceo_df['Industry'].value_counts().sort_values(ascending=True)
 
 ###############################################################################
 # Histograms
 ###############################################################################
 
 # Plot histogram of counts
-plot_histogram(data = state_ceo_counts, title="Histogram of CEO's Birthplaces", xlabel='Birthplace (State)', ylabel='Number of Leaders', filename='state_hist.png')
-plot_histogram(data = scaled_counts_1950, title="Histogram of CEO's Birthplaces (Normalized by 1950 State Pop", xlabel='Birthplace (State)', ylabel='Number of Leaders', filename='state_hist_rescaled.png')
+plot_histogram(data = state_ceo_counts, title="Histogram of CEO's Birthplaces", xlabel='State', ylabel='Number of Leaders', filename='state_hist.png', special_xticks=False)
+plot_histogram(data = scaled_counts_1950, title="Histogram of CEO's Birthplaces (Normalized by 1950 State Pop)", xlabel='State', ylabel='Number of Leaders', filename='state_hist_rescaled.png', special_xticks=False)
+plot_histogram(data = birth_counts, title="Histogram of CEO's Birth Year", xlabel='Year born', ylabel='Number of Leaders', filename='birth_hist.png', special_xticks=True)
+plot_histogram(data = industry_counts, title="Histogram of CEO's Industries", xlabel='Industry', ylabel='Number of Leaders', filename='industry_hist.png', special_xticks=False)
+
+
+# RESTRICT TO YR JOIN COMPANY < 1950
 
 
 ###############################################################################
