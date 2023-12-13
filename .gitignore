@@ -158,3 +158,4 @@ cython_debug/
 #.idea/
 data
 code/~reg.do.stswp
+*.stswp

@@ -23,25 +23,25 @@ os.chdir(base_directory)
 # Load data
 ###############################################################################
 
-county_ceo = pd.read_csv('data/clean_data/county_ceo.csv')
+county_df = pd.read_csv('data/clean_data/county_df.csv')
 
 
 ###############################################################################
 # Defin match function
 ###############################################################################
 
-def match_counties(county_ceo):
+def match_counties(county_df):
     # Initialize df to store matched counties' information
     matched_counties = pd.DataFrame(columns=['state', 'high_tfe_county', 'low_tfe_county', 'high_tfe_ceos', 'low_tfe_ceos'])
     matching_vars = ['pop1950', 'tfe']
 
     # Drop rows with missing values in the matching_vars
-    county_ceo = county_ceo.dropna(axis=0, subset=matching_vars)
+    county_df = county_df.dropna(axis=0, subset=matching_vars)
 
     # Match counties
-    for state in county_ceo['statea'].unique():
-        # Filter county_ceo by just values of that state
-        state_counties = county_ceo[county_ceo['statea'] == state]
+    for state in county_df['statea'].unique():
+        # Filter county_df by just values of that state
+        state_counties = county_df[county_df['statea'] == state]
 
         # Calculate the median TFE for the current state
         median_tfe = state_counties['tfe'].median()
@@ -88,7 +88,7 @@ def return_ate(df):
 ###############################################################################
 
 # Match 1
-matched_counties = match_counties(county_ceo)
+matched_counties = match_counties(county_df)
 
 ate_matched = return_ate(matched_counties)
 print(f"Difference between above median and below median TFE counties (by state) in their number of CEOs is {ate_matched}")
@@ -96,7 +96,7 @@ print(f"Difference between above median and below median TFE counties (by state)
 
 # Match 2
 core_tfe_states = ["Minnesota", "Iowa", "Missouri", "Michigan", "Arkansas", "Louisiana", "Mississippi", "Alabama", "Florida", "Tennessee", "Kentucky", "Ohio", "Indiana", "Illinois", "Wisconsin"]
-matched_counties_core_only = match_counties(county_ceo[county_ceo['statename'].isin(core_tfe_states)])
+matched_counties_core_only = match_counties(county_df[county_df['statename'].isin(core_tfe_states)])
 
 ate_matched_core = return_ate(matched_counties_core_only)
 print(f"Difference between above median and below median TFE counties (by state) FOR CORE STATES in their number of CEOs is {ate_matched_core}")
